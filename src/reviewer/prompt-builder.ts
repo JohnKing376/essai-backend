@@ -1,45 +1,39 @@
-import { DocumentType } from './dto/review-essay.dto';
-
-export function buildSystemPrompt(documentType: DocumentType): string {
+export function buildSystemPrompt(documentType: string = 'General Essay'): string {
   let contextRules = '';
 
-  switch (documentType) {
-    case DocumentType.FORMAL_LETTER:
+  const typeLower = documentType.toLowerCase();
+
+  if (typeLower.includes('formal letter') || typeLower.includes('email') || typeLower.includes('cover letter')) {
       contextRules = `
-You are evaluating a Formal Letter.
+You are evaluating a Formal Letter or Professional Communication.
 REQUIRED SECTIONS TO EVALUATE:
 1. "Heading & Salutation": Check for sender/recipient addresses and a formal salutation.
 2. "Letter Body": Check for conciseness, clarity, and directness of the primary message.
 3. "Sign-off & Professional Tone": Check for a proper formal sign-off and overall professional vocabulary.
 If any standard components are missing, you MUST explicitly flag this as a critical actionable suggestion in that section.`;
-      break;
-    case DocumentType.THESIS:
+  } else if (typeLower.includes('thesis') || typeLower.includes('research') || typeLower.includes('case study')) {
       contextRules = `
-You are evaluating a Thesis or Academic Chapter.
+You are evaluating a Thesis or Academic Paper.
 REQUIRED SECTIONS TO EVALUATE:
 1. "Abstract / Introduction": Evaluate the core research question and hook.
 2. "Literature & Methodology": Assess the use of citations, objectivity, and methodological clarity.
 3. "Results & Analysis": Evaluate analytical depth and logical flow.
 4. "Conclusion & Academic Tone": Analyze passive voice usage, scholarly vocabulary, and conclusion strength.`;
-      break;
-    case DocumentType.BLOG_POST:
+  } else if (typeLower.includes('blog') || typeLower.includes('creative') || typeLower.includes('story') || typeLower.includes('poem')) {
       contextRules = `
-You are evaluating a Creative Writing or Blog Post.
+You are evaluating Creative Writing or a Blog Post.
 REQUIRED SECTIONS TO EVALUATE:
 1. "Title & Hook": Focus heavily on reader engagement and the opening hook.
-2. "Body Paragraphs (Scannability)": Evaluate paragraph length (shorter is better) and conversational tone.
+2. "Body Paragraphs (Scannability)": Evaluate paragraph length (shorter is better) and conversational/creative tone.
 3. "Conclusion & Call to Action": Provide actionable advice on making the conclusion more engaging and actionable.`;
-      break;
-    case DocumentType.GENERAL_ESSAY:
-    default:
+  } else {
       contextRules = `
-You are evaluating a General Academic Essay.
+You are evaluating a document formatted as: "${documentType}".
 REQUIRED SECTIONS TO EVALUATE:
-1. "Introduction & Thesis": Check for a clear, strong thesis statement upfront.
-2. "Body Paragraphs & Evidence": Check for logical flow, topic sentences, and supporting evidence.
+1. "Introduction & Thesis / Hook": Check for a clear opening that matches the ${documentType} format.
+2. "Body & Evidence / Content": Check for logical flow, structural integrity, and appropriate tone.
 3. "Conclusion": Check for a strong summary without introducing new arguments.
 4. "Grammar & Mechanics": Evaluate punctuation, spelling, and sentence structure.`;
-      break;
   }
 
   return `You are a professional writing assistant and expert document reviewer. 
