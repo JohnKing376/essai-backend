@@ -1,17 +1,11 @@
-import { IsString, IsNotEmpty, MaxLength, MinLength, IsEnum, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, MaxLength, MinLength, IsEnum, IsOptional, IsIn } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { VALID_DOCUMENT_TYPES } from '../../common/constants/document-types';
 
 export enum TargetModel {
   GEMINI = 'gemini',
   OPENAI = 'openai',
   ANTHROPIC = 'anthropic',
-}
-
-export enum DocumentType {
-  GENERAL_ESSAY = 'general_essay',
-  FORMAL_LETTER = 'formal_letter',
-  THESIS = 'thesis',
-  BLOG_POST = 'blog_post',
 }
 
 export class ReviewEssayDto {
@@ -35,11 +29,10 @@ export class ReviewEssayDto {
 
   @ApiPropertyOptional({
     description: 'The document type/context to grade and review against.',
-    enum: DocumentType,
-    default: DocumentType.GENERAL_ESSAY,
-    example: DocumentType.THESIS,
+    example: 'Thesis',
   })
-  @IsEnum(DocumentType, { message: 'documentType must be general_essay, formal_letter, thesis, or blog_post.' })
+  @IsString()
   @IsOptional()
-  documentType?: DocumentType = DocumentType.GENERAL_ESSAY;
+  @IsIn(VALID_DOCUMENT_TYPES, { message: 'documentType must be a supported document type.' })
+  documentType?: string;
 }

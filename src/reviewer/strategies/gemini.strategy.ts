@@ -1,9 +1,12 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { BaseReviewer } from '../../common/interfaces/reviewer.interface';
-import { ReviewEssayDto, DocumentType } from '../dto/review-essay.dto';
+import { ReviewEssayDto } from '../dto/review-essay.dto';
 import { ReviewResultDto } from '../../common/dto/review-result.dto';
 import { GoogleGenAI } from '@google/genai';
 import { buildSystemPrompt } from '../prompt-builder';
+import { DetectTypeDto } from '../dto/detect-type.dto';
+import { DetectionResultDto } from '../../common/dto/detection-result.dto';
+import { VALID_DOCUMENT_TYPES } from '../../common/constants/document-types';
 
 @Injectable()
 export class GeminiProvider implements BaseReviewer {
@@ -14,7 +17,7 @@ export class GeminiProvider implements BaseReviewer {
     }
 
     const ai = new GoogleGenAI({ apiKey: key });
-    const systemPrompt = buildSystemPrompt(dto.documentType || DocumentType.GENERAL_ESSAY);
+    const systemPrompt = buildSystemPrompt(dto.documentType || 'General Essay');
 
     const reviewSchema = {
       type: 'OBJECT',
@@ -66,6 +69,46 @@ export class GeminiProvider implements BaseReviewer {
       return JSON.parse(text) as ReviewResultDto;
     } catch (error) {
       throw new InternalServerErrorException(`Gemini review execution failed: ${error.message}`);
+    }
+  }
+
+  async detectType(dto: DetectTypeDto, apiKey?: string): Promise<DetectionResultDto> {
+    const key = apiKey || process.env.GEMINI_API_KEY;
+    if (!key) {
+      throw new InternalServerErrorException('Gemini API key is not configured.');
+    }
+
+    const ai = new GoogleGenAI({ apiKey: key });
+
+    const detectSchema = {
+      type: 'OBJECT',
+      properties: {
+        primaryGuess: { type: 'STRING', description: 'The single most likely document type (e.g., Formal Letter, Thesis, Poem).' },
+        confidenceScore: { type: 'NUMBER', description: 'Confidence score from 0 to 100.' },
+        alternatives: { type: 'ARRAY', items: { type: 'STRING' }, description: 'The next 3 most likely formats.' }
+      },
+      required: ['primaryGuess', 'confidenceScore', 'alternatives'],
+    };
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `You are an expert linguistic classifier. Read the provided text and determine its exact writing format. You MUST choose your primaryGuess and alternatives ONLY from the following list:\n${VALID_DOCUMENT_TYPES.join(', ')}\n\nText to analyze:\n${dto.essayText}`,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: detectSchema as any,
+          temperature: 0.1,
+        },
+      });
+
+      const text = response.text;
+      if (!text) {
+        throw new InternalServerErrorException('Gemini returned an empty response for detection.');
+      }
+
+      return JSON.parse(text) as DetectionResultDto;
+    } catch (error) {
+      throw new InternalServerErrorException(`Gemini detection execution failed: ${error.message}`);
     }
   }
 }
